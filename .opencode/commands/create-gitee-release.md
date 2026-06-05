@@ -1,10 +1,10 @@
 ---
-description: 使用 Gitee API 创建 Release，上传安装包和便携版
+description: 使用 Gitee API 创建 Release，上传安装包
 ---
 
 # Create Gitee Release
 
-使用 REST API 在 Gitee 创建新 Release，自动上传 NSIS 安装包和便携版 zip 作为附件。
+使用 REST API 在 Gitee 创建新 Release，上传 NSIS 安装包作为附件。
 
 ## 执行步骤
 
@@ -36,22 +36,13 @@ $env:GITEE_ACCESS_TOKEN = "用户提供的Token"
 
 ### 2. 验证构建产物
 
-确认 `release/{version}/` 目录下存在以下内容：
+确认 `release/{version}/` 目录下存在：
 
 - `poe-bench_{version}.exe` — NSIS 安装包
-- `win-unpacked/` — 便携版目录
 
-如任一缺失，提示用户先执行 `npm run build` 构建项目。
+如缺失，提示用户先执行 `npm run build` 构建项目。
 
-### 3. 压缩便携版
-
-检查便携版 zip 是否已存在，不存在则从 `win-unpacked/` 目录压缩创建。
-
-文件名格式：`poe-bench_portable_{version}.zip`，输出到 `release/{version}/` 目录。
-
-使用 PowerShell `Compress-Archive`，压缩级别 `Optimal`，压缩 `win-unpacked/` 下的所有文件（不包含 `win-unpacked` 目录本身）。
-
-### 4. 提取 Release Notes
+### 3. 提取 Release Notes
 
 从 `CHANGELOG.md` 中读取对应版本的更新日志：
 
@@ -73,11 +64,11 @@ $notes += @"
 "@
 ```
 
-### 5. 创建 Gitee Release 并上传附件
+### 4. 创建 Gitee Release 并上传附件
 
 Gitee CLI 不支持直接上传文件，需通过 REST API 分两步完成：
 
-#### 5.1 创建 Release
+#### 4.1 创建 Release
 
 ```powershell
 $owner = "sage9731"
@@ -98,7 +89,7 @@ $release = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/$owner/$repo/r
 Write-Host "Release 创建成功，ID: $($release.id)"
 ```
 
-#### 5.2 上传附件
+#### 4.2 上传附件
 
 ```powershell
 $releaseId = $release.id
@@ -120,7 +111,7 @@ Write-Host "已上传: $fileName"
 > PowerShell 7 的 `-Form` 参数接受 `FileInfo` 对象，自动处理 `multipart/form-data` 编码。
 ```
 
-### 6. 确认结果
+### 5. 确认结果
 
 执行成功后，输出 Release URL（格式：`https://gitee.com/sage9731/poe-crafting-bench/releases/{tag}`）。
 
