@@ -47,12 +47,12 @@ function HiddenFeatures(
             <Alert
                 className="hidden-features-hint"
                 type="warning"
-                message="请勿传播开启更多功能的方法，这些功能容易引起争议，导致本工具不复存在。"
+                message="更多功能为隐藏彩蛋，请勿公开传播"
             />
             <Alert
                 className="hidden-features-hint"
                 type="error"
-                message="以下功能请谨慎开启，有被封号的风险，后果自行承担！如果不想使用这些功能，请将开关拨至保持原样。"
+                message="以下功能请谨慎开启，存在封号风险，后果自行承担！"
             />
             <Form
                 form={form}

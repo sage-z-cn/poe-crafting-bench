@@ -34,14 +34,23 @@ html, body, #root {
         .secret {
             cursor: pointer;
             line-height: 32px;
-            color: transparent;
             user-select: none;
 
             font-style: italic;
             font-family: "FontinSmallCaps", Verdana, Arial, Helvetica, sans-serif;
 
+            color: transparent;
+            text-shadow: 0 0 0 transparent;
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+
             &:hover {
                 color: var(--unique-color);
+                text-shadow: 0 0 8px var(--unique-color);
+            }
+
+            &:active {
+                transform: scale(1.15);
+                transition: transform 0.1s ease-out;
             }
         }
     }

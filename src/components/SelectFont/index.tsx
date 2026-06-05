@@ -141,7 +141,7 @@ function SelectFont(
                   <p>繁转简补丁的原理就是通过修改字体实现，和改字体功能冲突，若要改字体请换简体或繁体补丁</p>
                 </p>
               ) :
-              <p>请在左侧字体列表中选择心仪的字体。若字体列表为空，请安装<a onClick={openDotNet8}>.net8</a>后重启工具</p>}
+              <p>左侧字体列表中选择字体后在此进行预览</p>}
           </div>
         ) : (
           <div className="unique-item" style={font ? { fontFamily: font } : {}}>

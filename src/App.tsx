@@ -19,6 +19,8 @@ interface CustomStepProps extends StepProps {
 }
 
 function App() {
+    const SECRET_CLICK_TOTAL = 10
+    const SECRET_CLICK_HINT = 5
     const executeRef = useRef<ExecuteActionsHandler>(null);
     const [execParam, setExecParam] = useState<ExecParam>({ path: '' });
     const [executing, setExecuting] = useState(false);
@@ -83,12 +85,12 @@ function App() {
     const onSecretClick = useCallback(() => {
         if (!showHiddenFeatures) {
             const times = secretClickTimes + 1;
-            if (times < 20) {
+            if (times < SECRET_CLICK_TOTAL) {
                 setSecretClickTimes(times);
-                if (times >= 15) {
+                if (times >= SECRET_CLICK_HINT) {
                     message.success({
                         key: 'secret-click-times',
-                        content: `还差 ${20 - times} 次开启更多功能！`
+                        content: `还差 ${SECRET_CLICK_TOTAL - times} 次开启更多功能！`
                     }).then();
                 }
             } else {

@@ -74,8 +74,8 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
         }
     }), [])
 
-    const openGithub = useCallback(() => {
-        window.ipcRenderer.invoke('open-external', 'https://github.com/sage9731/poe-crafting-bench');
+    const openUrl = useCallback((url: string) => {
+        window.ipcRenderer.invoke('open-external', url);
     }, []);
 
     return (
@@ -83,12 +83,15 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
             <div className="disclaimer">
                 <div className="disclaimer-title">免责声明</div>
                 <div className="disclaimer-content">
-                    <div>1. 此工具开源免费，<a onClick={openGithub}>开源地址</a></div>
-                    <div>2. 任何修改游戏本体的操作都有可能导致封号，由此造成的后果请自行承担</div>
-                    <div>3. 此工具不包含任何恶意行为，例如窃取账号信息、盗号等。不放心的朋友可以阅读源码确认安全后自行编译打包使用
+                    <div>1. 本工具开源免费，源码托管于
+                        <a onClick={() => openUrl('https://gitee.com/sage9731/poe-crafting-bench')}>Gitee</a>
+                        {' / '}
+                        <a onClick={() => openUrl('https://github.com/sage-z-cn/poe-crafting-bench')}>GitHub</a>
                     </div>
-                    <div>4. 每次游戏更新后补丁和字体等修改都会失效，需要下载新版本补丁安装。</div>
-                    <div>5. 继续使用此工具代表同意声明</div>
+                    <div>2. 修改游戏客户端存在封号风险，使用者自行承担后果</div>
+                    <div>3. 工具不含任何恶意代码，如有疑虑可自行查阅源码编译</div>
+                    <div>4. 游戏更新后补丁和字体都会失效，需下载新版本补丁重新安装或重新修改字体</div>
+                    <div>5. 继续使用即视为同意以上声明</div>
                 </div>
             </div>
             <div className="execute-result">
