@@ -3,10 +3,10 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
-import { update } from './update'
 import * as process from "node:process";
 import { patchGame } from './poe-patcher.js';
 import { getGameInstallPath, getInstalledFonts } from './game-utils.js';
+import { checkForUpdate } from './update-checker.js';
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -98,8 +98,8 @@ async function createWindow() {
         return { action: 'deny' }
     })
 
-    // Auto update
-    update(win)
+    // 检查更新
+    checkForUpdate(win)
 }
 
 app.whenReady().then(createWindow)
