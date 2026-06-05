@@ -10,6 +10,7 @@ import PatchPath from "@/components/PatchPath";
 import SelectFont from "@/components/SelectFont";
 import HiddenFeatures from "@/components/HiddenFeatures";
 import ExecuteActions, { ExecuteActionsHandler } from "@/components/ExecuteActions";
+import UpdateNotice from "@/components/UpdateNotice";
 
 import './App.css'
 
@@ -129,6 +130,7 @@ function App() {
 
     return (
         <div className='App'>
+            <UpdateNotice />
             <div className="header">
                 <Steps
                     current={currentStep}

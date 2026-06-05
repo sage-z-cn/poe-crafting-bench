@@ -1,10 +1,10 @@
-import { app, dialog, shell, BrowserWindow } from 'electron'
+import { app, ipcMain } from 'electron'
 
 const REMOTE_PACKAGE_URL = 'https://raw.giteeusercontent.com/sage9731/poe-crafting-bench/raw/main/package.json'
 
 const DOWNLOAD_LINKS = [
   {
-    label: '前往 Gitee 下载',
+    label: '前往 Gitee 下载 (推荐)',
     url: 'https://gitee.com/sage9731/poe-crafting-bench/releases',
   },
   {
@@ -12,6 +12,12 @@ const DOWNLOAD_LINKS = [
     url: 'https://github.com/sage-z-cn/poe-crafting-bench/releases',
   },
 ]
+
+export interface UpdateInfo {
+  currentVersion: string
+  remoteVersion: string
+  downloadLinks: typeof DOWNLOAD_LINKS
+}
 
 /**
  * 比较两个 semver 版本号，返回 1 / -1 / 0
@@ -30,34 +36,44 @@ function compareVersions(a: string, b: string): number {
   return 0
 }
 
-export async function checkForUpdate(win: BrowserWindow): Promise<void> {
-  try {
-    const response = await fetch(REMOTE_PACKAGE_URL)
-    if (!response.ok) return
+export function registerUpdateChecker() {
+  ipcMain.handle('check-for-update', async (): Promise<UpdateInfo | null> => {
+    console.log('[update-checker] 开始检查更新...')
 
-    const remotePkg = await response.json() as { version?: string }
-    const remoteVersion = remotePkg?.version
-    if (!remoteVersion) return
+    try {
+      const response = await fetch(REMOTE_PACKAGE_URL)
+      console.log('[update-checker] fetch 状态:', response.status, response.ok)
 
-    const currentVersion = app.getVersion()
+      if (!response.ok) {
+        console.log('[update-checker] fetch 失败，状态码异常')
+        return null
+      }
 
-    if (compareVersions(remoteVersion, currentVersion) <= 0) return
+      const remotePkg = await response.json() as { version?: string }
+      const remoteVersion = remotePkg?.version
+      console.log('[update-checker] 远程版本:', remoteVersion)
 
-    const result = await dialog.showMessageBox(win, {
-      type: 'info',
-      title: '发现新版本',
-      message: `当前版本：${currentVersion}\n最新版本：${remoteVersion}`,
-      detail: '请选择下载渠道获取最新版本。',
-      buttons: [...DOWNLOAD_LINKS.map((l) => l.label), '忽略'],
-      defaultId: 0,
-      cancelId: DOWNLOAD_LINKS.length,
-    })
+      if (!remoteVersion) {
+        console.log('[update-checker] 远程 package.json 无 version 字段')
+        return null
+      }
 
-    const idx = result.response
-    if (idx >= 0 && idx < DOWNLOAD_LINKS.length) {
-      shell.openExternal(DOWNLOAD_LINKS[idx].url)
+      const currentVersion = app.getVersion()
+      console.log('[update-checker] 本地版本 (app.getVersion):', currentVersion)
+
+      const cmp = compareVersions(remoteVersion, currentVersion)
+      console.log('[update-checker] 版本比较结果 (remote vs local):', cmp)
+
+      if (cmp <= 0) {
+        console.log('[update-checker] 已是最新版本，无需更新')
+        return null
+      }
+
+      console.log('[update-checker] 发现新版本，返回更新信息')
+      return { currentVersion, remoteVersion, downloadLinks: DOWNLOAD_LINKS }
+    } catch (err) {
+      console.error('[update-checker] 检查更新异常:', err)
+      return null
     }
-  } catch {
-    // 网络请求失败静默忽略，不影响应用正常使用
-  }
+  })
 }

@@ -6,10 +6,13 @@ import os from 'node:os'
 import * as process from "node:process";
 import { patchGame } from './poe-patcher.js';
 import { getGameInstallPath, getInstalledFonts } from './game-utils.js';
-import { checkForUpdate } from './update-checker.js';
+import { registerUpdateChecker } from './update-checker.js';
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// 注册更新检查 IPC
+registerUpdateChecker()
 
 process.env.APP_ROOT = path.join(__dirname, '../..')
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
@@ -23,6 +26,9 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 // Disable GPU Acceleration for Windows 7
 if (os.release().startsWith('6.1')) app.disableHardwareAcceleration()
+
+// 禁用 Autofill 特性，消除 DevTools 中 Autofill.enable/setAddresses CDP 错误
+app.commandLine.appendSwitch('disable-features', 'AutofillServerCommunication')
 
 // Set application name for Windows 10+ notifications
 if (process.platform === 'win32') app.setAppUserModelId(app.getName())
@@ -98,8 +104,6 @@ async function createWindow() {
         return { action: 'deny' }
     })
 
-    // 检查更新
-    checkForUpdate(win)
 }
 
 app.whenReady().then(createWindow)

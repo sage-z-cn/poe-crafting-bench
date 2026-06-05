@@ -25,6 +25,7 @@
     "ahooks": "^3.8.5",
     "antd": "^5.26.0-alpha.0",
     "array-move": "^4.0.0",
+    "caniuse-lite": "^1.0.30001793",
     "classnames": "^2.5.1",
     "lodash": "^4.17.21",
     "poe-bundle-lib": "^1.0.1",
