@@ -11,9 +11,13 @@
   ],
   "extraResources": [
     {
-      "from": "bin",
-      "to": "bin",
-      "filter": ["**/*"]
+      "from": "libs",
+      "to": "libs",
+      "filter": ["!oo2core.dll"]
+    },
+    {
+      "from": "libs/oo2core.dll",
+      "to": "../oo2core.dll"
     }
   ],
   "mac": {

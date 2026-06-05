@@ -99,7 +99,7 @@ function GameInstallPath(
     useEffect(() => {
         if (path && path.trim()) {
             const lowerPath = path.toLowerCase().trim();
-            if (lowerPath.endsWith('.ggpk') || lowerPath.endsWith('.bin')) {
+            if (lowerPath.endsWith('.bin')) {
                 onChangeRef.current(path);
             }
         }
@@ -112,7 +112,7 @@ function GameInstallPath(
                     <Input
                         value={path}
                         disabled
-                        placeholder="请选择游戏根目录的 Content.ggpk 或 Bundles2\_.index.bin"
+                        placeholder="请选择游戏根目录的 Bundles2\_.index.bin"
                     />
                 </Flex>
                 <Button type="primary" onClick={onManualChoose}>手动选择</Button>
