@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useDebounceFn, useMount } from "ahooks";
 import { isEmpty } from "lodash";
 import classNames from "classnames";
@@ -64,6 +64,22 @@ function SelectFont(
       }
     });
   }, []);
+
+  // 字体列表加载完成后或组件变为可见时，滚动到当前选中的字体项
+  // useLayoutEffect 在 DOM 更新后浏览器绘制前同步执行，确保滚动不闪烁
+  // 依赖 visible：挂载时组件可能隐藏（如步骤0），scrollIntoView 在隐藏元素上不生效，
+  //              等切换到字体步骤时 visible 变为 true 再触发滚动
+  useLayoutEffect(() => {
+    if (visible && fonts.length > 0 && font && fontListRef.current) {
+      const idx = fonts.indexOf(font);
+      if (idx >= 0) {
+        // 通过 class 查找，不依赖 id（antd Radio 可能不传递 id 到 DOM）
+        const items = fontListRef.current.querySelectorAll<HTMLElement>('.font-list-item');
+        // +1 跳过第一项"不修改字体"
+        items[idx + 1]?.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [visible, fonts, font]);
 
   useEffect(() => {
     if (onChangeRef.current) {
