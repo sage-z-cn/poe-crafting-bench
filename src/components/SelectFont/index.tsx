@@ -5,11 +5,15 @@ import classNames from "classnames";
 import { Button, Input, InputNumber, Popover, Radio, Space } from "antd";
 import './index.css';
 import useLastExecParam from "@/hooks/useLastExecParam";
+import poe2HeaderLeft from '@/assets/poe2/header-double-unique-left.png';
+import poe2HeaderMiddle from '@/assets/poe2/header-double-unique-middle.png';
+import poe2HeaderRight from '@/assets/poe2/header-double-unique-right.png';
 
 interface SelectFontProps {
   visible: boolean
   onChange: (params: Pick<ExecParam, 'font' | 'fontSizeDelta'>) => void
   patch?: ExecParam['patch'];
+  version?: number;
 }
 
 function SelectFont(
@@ -17,6 +21,7 @@ function SelectFont(
     visible,
     onChange,
     patch,
+    version,
   }: SelectFontProps
 ) {
   const [lastExecParam] = useLastExecParam();
@@ -168,29 +173,54 @@ function SelectFont(
               <p>左侧字体列表中选择字体后在此进行预览</p>}
           </div>
         ) : (
-          <div className="unique-item" style={font ? { fontFamily: font } : {}}>
-            <div className="unique-item-header">
-              <div className="item-name">法师之血(仅做演示，同时支持POE1/2)</div>
-              <div className="item-name">重革腰带</div>
+          version === 2 ? (
+            <div className="unique-item unique-item--poe2" style={font ? { fontFamily: font } : {}}>
+              <div className="unique-item-header unique-item-header--poe2">
+                <img src={poe2HeaderLeft} alt="" className="header-img header-img--left" />
+                <div className="header-img header-img--middle" style={{ backgroundImage: `url(${poe2HeaderMiddle})` }} />
+                <img src={poe2HeaderRight} alt="" className="header-img header-img--right" />
+                <div className="item-name">猎首</div>
+                <div className="item-name item-name--base">重革腰带</div>
+              </div>
+              <div className="unique-item-content">
+                <div>腰带</div>
+                <div className="unique-item-content-seperator"/>
+                <div>需求 等级 <span className="color-white">50</span></div>
+                <div className="unique-item-content-seperator"/>
+                <div><span className="color-magic">具有 1 个咒符栏</span></div>
+                <div><span className="color-magic">晕眩阈值提高 28%</span></div>
+                <div className="unique-item-content-seperator"/>
+                <div><span className="color-magic">+56</span> 生命上限</div>
+                <div><span className="color-magic">+24</span> 力量</div>
+                <div><span className="color-magic">+37</span> 敏捷</div>
+                <div><span className="color-magic">当你击败稀有怪物时，获得它的词缀，持续 60 秒</span></div>
+              </div>
             </div>
-            <div className="unique-item-content">
-              <div>腰带</div>
-              <div className="unique-item-content-seperator"/>
-              <div>需求 等级 <span className="color-white">44</span></div>
-              <div className="unique-item-content-seperator"/>
-              <div><span className="color-white">+35</span> 力量</div>
-              <div className="unique-item-content-seperator"/>
-              <div><span className="color-white">+50</span> 敏捷</div>
-              <div><span className="color-white">+25</span><span className="color-magic">% 火焰抗性</span>
+          ) : (
+            <div className="unique-item" style={font ? { fontFamily: font } : {}}>
+              <div className="unique-item-header">
+                <div className="item-name">法师之血</div>
+                <div className="item-name">重革腰带</div>
               </div>
-              <div><span className="color-white">+25</span><span className="color-magic">% 冰霜抗性</span>
+              <div className="unique-item-content">
+                <div>腰带</div>
+                <div className="unique-item-content-seperator"/>
+                <div>需求 等级 <span className="color-white">44</span></div>
+                <div className="unique-item-content-seperator"/>
+                <div><span className="color-white">+35</span> 力量</div>
+                <div className="unique-item-content-seperator"/>
+                <div><span className="color-white">+50</span> 敏捷</div>
+                <div><span className="color-white">+25</span><span className="color-magic">% 火焰抗性</span>
+                </div>
+                <div><span className="color-white">+25</span><span className="color-magic">% 冰霜抗性</span>
+                </div>
+                <div><span className="color-magic">不能使用魔法非恢复类药剂</span></div>
+                <div><span className="color-magic">最左边的 <span className="color-white">4</span> 个魔法非恢复类药剂给你持续提供药剂效果</span>
+                </div>
+                <div><span className="color-magic">不能移除魔法非恢复类药剂效果</span></div>
               </div>
-              <div><span className="color-magic">不能使用魔法非恢复类药剂</span></div>
-              <div><span className="color-magic">最左边的 <span className="color-white">4</span> 个魔法非恢复类药剂给你持续提供药剂效果</span>
-              </div>
-              <div><span className="color-magic">不能移除魔法非恢复类药剂效果</span></div>
             </div>
-          </div>
+          )
         )}
       </div>
     </div>

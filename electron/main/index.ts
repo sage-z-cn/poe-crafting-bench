@@ -244,3 +244,18 @@ ipcMain.handle('check-tencent-platform', async (_, arg: { path: string }) => {
     // 腾讯平台在游戏目录下有 TCLS 文件夹
     return fs.existsSync(path.join(gameDir, 'TCLS'));
 });
+
+ipcMain.handle('detect-game-version', async (_, arg: { path: string }) => {
+    const gamePath = arg.path;
+    const lowerPath = gamePath.toLowerCase();
+    let gameDir: string;
+
+    if (lowerPath.endsWith('.ggpk')) {
+        gameDir = path.dirname(gamePath);
+    } else {
+        gameDir = path.dirname(path.dirname(gamePath));
+    }
+
+    // POE2 游戏目录下存在 GFSDK_Aftermath_Lib.x64.dll
+    return fs.existsSync(path.join(gameDir, 'GFSDK_Aftermath_Lib.x64.dll')) ? 2 : 1;
+});

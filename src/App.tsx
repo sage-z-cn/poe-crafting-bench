@@ -104,6 +104,7 @@ function App() {
     }, [showHiddenFeatures, secretClickTimes]);
 
     const [gamePlatform, setGamePlatform] = useState<string>();
+    const [gameVersion, setGameVersion] = useState<number>();
     const [executedSuccess, setExecutedSuccess] = useState(false);
 
     const setExecParamField = useCallback((key: string, value: any) => {
@@ -174,11 +175,14 @@ function App() {
             <div className="body">
                 <GameInstallPath
                     visible={currentStepKey === 'path'}
-                    onChange={(path, platform) => {
+                    onChange={(path, platform, version) => {
                         setExecParamField('path', path);
                         if (platform) {
                             setExecParamField('platform', platform);
                             setGamePlatform(platform);
+                        }
+                        if (version != null) {
+                            setGameVersion(version);
                         }
                     }}
                 />
@@ -188,6 +192,7 @@ function App() {
                 />
                 <SelectFont
                     patch={execParam.patch}
+                    version={gameVersion}
                     visible={currentStepKey === 'font'}
                     onChange={params => addExecParam(params)}
                 />
@@ -210,7 +215,7 @@ function App() {
                 {executedSuccess && gamePlatform !== 'TENCENT' ? (
                     <Button type="primary" onClick={launchGame}>启动游戏</Button>
                 ) : (
-                    <div className="secret" onClick={onSecretClick}>你的血管里奔流着力量之河。</div>
+                    <div className="secret" onClick={onSecretClick}>{gameVersion === 2 ? '骨骼是灵魂的居所' : '你的血管里奔流着力量之河。'}</div>
                 )}
                 <div style={{ display: 'flex', gap: 12 }}>
                     <Button

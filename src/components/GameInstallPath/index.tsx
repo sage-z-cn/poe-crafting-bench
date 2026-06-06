@@ -14,7 +14,7 @@ import useLastExecParam from "@/hooks/useLastExecParam";
 
 interface GameInstallPathProps {
     visible: boolean
-    onChange: (path: string, platform?: string) => void
+    onChange: (path: string, platform?: string, version?: number) => void
 }
 
 const gameVersions = [
@@ -72,7 +72,6 @@ function GameInstallPath(
     useMount(() => {
         if (lastExecParam.path) {
             setPath(lastExecParam.path);
-            onChangeRef.current(lastExecParam.path);
         }
     })
 
@@ -96,11 +95,15 @@ function GameInstallPath(
         }
     }, [version, platform]);
 
+    // 路径确定后自动检测游戏版本
     useEffect(() => {
         if (path && path.trim()) {
             const lowerPath = path.toLowerCase().trim();
             if (lowerPath.endsWith('.bin') || lowerPath.endsWith('.ggpk')) {
-                onChangeRef.current(path, platform);
+                window.ipcRenderer.invoke('detect-game-version', { path }).then((detectedVersion: number) => {
+                    setVersion(detectedVersion);
+                    onChangeRef.current(path, platform, detectedVersion);
+                });
             }
         }
     }, [path])

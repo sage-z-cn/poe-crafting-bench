@@ -27,7 +27,7 @@
 
     .font-preview-container {
         width: 60%;
-        padding: 12px 16px 12px 8px;
+        padding: 6px 16px 6px 8px;
 
         .font-preview-hint {
             margin-top: 100px;
@@ -38,6 +38,7 @@
         .unique-item {
             background: #000;
             text-align: center;
+            height: 100%;
 
             .color-magic {
                 color: var(--magic-color);
@@ -65,6 +66,50 @@
                     background: url(data:image/webp;base64,UklGRjIBAABXRUJQVlA4WAoAAAAQAAAA3AAABwAAQUxQSIwAAAAFV6AgABmG/o3ZX4mISPDV3Q23tbW1DTjV+j0BYYI4gWEE9VT8GxhNAEgTSCPgObMrlRH9nwCyL9OBUgDg/CqEkEYaa7z1N+dHH8LovTZaSi2EUIwDAKVAhheRXC4ppoRY7hlbnlpt6/rovfdlW7Z5nts8zbnmjIiYYoqRkGcgvhOCNf/W+tMfXMiuDFZQOCCAAAAAEAYAnQEq3QAIAD5tLpFFooirbqsAIANiWUGcGaleGoEB/a9L/TVUPD/9oAAoDbheD+vVQSUymPYAAP77frJZ/6AQcegyus/X0PeZ6Din7CqQqU3NIWYG6mYKDIq0o81Q7nAGIAmfo3xMkmiZy4/8/Nih6JgCPqyKevRgLeHjIAA=) center no-repeat;
                     height: 8px;
                     margin: 1px 0;
+                }
+            }
+        }
+
+        .unique-item--poe2 {
+            .unique-item-header--poe2 {
+                position: relative;
+                height: 54px;
+                background: none;
+
+                .header-img {
+                    position: absolute;
+                    top: 0;
+                    height: 54px;
+                }
+
+                .header-img--left {
+                    left: 0;
+                }
+
+                .header-img--middle {
+                    left: 40px;
+                    right: 40px;
+                    background-repeat: repeat-x;
+                    background-size: auto 54px;
+                }
+
+                .header-img--right {
+                    right: 0;
+                }
+
+                .item-name {
+                    position: absolute;
+                    top: 4px;
+                    left: 0;
+                    right: 0;
+                    text-align: center;
+                    line-height: 24px;
+                    color: rgb(175, 96, 37);
+                    white-space: nowrap;
+                }
+
+                .item-name--base {
+                    top: 25px;
                 }
             }
         }
