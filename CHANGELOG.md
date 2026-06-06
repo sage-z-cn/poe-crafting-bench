@@ -9,6 +9,15 @@
 - UI 修改（字体/小地图/视距/去雾/点亮）在 GGPK 模式下通过文件树遍历实现，自动处理路径大小写不敏感匹配
 - 文件选择对话框支持 `.ggpk` 扩展名
 - 游戏路径检测同时支持 `Content.ggpk` 和 `Bundles2/_.index.bin`
+- **流放之路 2 装备预览**，根据检测到的游戏版本显示独立的 POE1/POE2 传奇装备预览
+- **游戏版本自动检测**，通过目录下的 `GFSDK_Aftermath_Lib.x64.dll` 判断 POE1/POE2
+- **游戏平台自动检测**，通过 TCLS / steam_api64.dll / .egstore 自动识别腾讯/Steam/Epic/GGG，路径恢复时同时检测版本和平台
+- **繁转简补丁冲突保护**，检测到繁转简补丁时自动清空字体选择，执行时跳过字体修改
+
+### 修复
+
+- 修复 preload 层 IPC listener 泄漏导致执行日志重复 4 次的问题
+- 修复 `executedSuccess` 改名为 `showLaunchButton`，仅 GGG 平台显示启动游戏按钮
 
 ### 优化
 
