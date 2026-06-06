@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.2.0
+
+### 新增
+
+- **Content.ggpk 格式支持**，基于 poe-bundle-lib 新增的 LibGGPK3/LibBundledGGPK3 TypeScript 移植，支持直接读写 `Content.ggpk` 文件
+- 自动识别文件格式（`.ggpk` vs `.bin`），GGPK 模式支持 Bundled GGPK（内含 Bundles2）和纯 GGPK 两种子模式
+- UI 修改（字体/小地图/视距/去雾/点亮）在 GGPK 模式下通过文件树遍历实现，自动处理路径大小写不敏感匹配
+- 文件选择对话框支持 `.ggpk` 扩展名
+- 游戏路径检测同时支持 `Content.ggpk` 和 `Bundles2/_.index.bin`
+
+### 优化
+
+- 精简安装包体积，移除多余 Chromium 语言包
+
 ## v2.1.0
 
 ### 新增
