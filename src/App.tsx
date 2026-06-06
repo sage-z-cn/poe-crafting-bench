@@ -105,7 +105,7 @@ function App() {
 
     const [gamePlatform, setGamePlatform] = useState<string>();
     const [gameVersion, setGameVersion] = useState<number>();
-    const [executedSuccess, setExecutedSuccess] = useState(false);
+    const [showLaunchButton, setExecutedSuccess] = useState(false);
 
     const setExecParamField = useCallback((key: string, value: any) => {
         setExecParam(prev => ({
@@ -137,9 +137,10 @@ function App() {
             setExecutedSuccess(true);
             return;
         }
-        // 未选择平台时，通过 TCLS 文件夹检测腾讯平台
-        window.ipcRenderer.invoke('check-tencent-platform', { path: execParam.path }).then((isTecent: boolean) => {
-            if (!isTecent) {
+        // 未选择平台时，自动检测
+        window.ipcRenderer.invoke('detect-game-platform', { path: execParam.path }).then((detectedPlatform: string) => {
+            setGamePlatform(detectedPlatform);
+            if (detectedPlatform === 'GGG') {
                 setExecutedSuccess(true);
             }
         });
@@ -212,7 +213,7 @@ function App() {
                 >
                     上一步
                 </Button>
-                {executedSuccess && gamePlatform !== 'TENCENT' ? (
+                {showLaunchButton ? (
                     <Button type="primary" onClick={launchGame}>启动游戏</Button>
                 ) : (
                     <div className="secret" onClick={onSecretClick}>{gameVersion === 2 ? '骨骼是灵魂的居所' : '你的血管里奔流着力量之河。'}</div>

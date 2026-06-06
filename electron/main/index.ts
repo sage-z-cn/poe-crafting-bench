@@ -259,3 +259,27 @@ ipcMain.handle('detect-game-version', async (_, arg: { path: string }) => {
     // POE2 游戏目录下存在 GFSDK_Aftermath_Lib.x64.dll
     return fs.existsSync(path.join(gameDir, 'GFSDK_Aftermath_Lib.x64.dll')) ? 2 : 1;
 });
+
+ipcMain.handle('detect-game-platform', async (_, arg: { path: string }) => {
+    const gamePath = arg.path;
+    const lowerPath = gamePath.toLowerCase();
+    let gameDir: string;
+
+    if (lowerPath.endsWith('.ggpk')) {
+        gameDir = path.dirname(gamePath);
+    } else {
+        gameDir = path.dirname(path.dirname(gamePath));
+    }
+
+    // 检测优先级：TENCENT > Steam > Epic > GGG
+    if (fs.existsSync(path.join(gameDir, 'TCLS'))) {
+        return 'TENCENT';
+    }
+    if (fs.existsSync(path.join(gameDir, 'steam_api64.dll'))) {
+        return 'Steam';
+    }
+    if (fs.existsSync(path.join(gameDir, '.egstore'))) {
+        return 'Epic';
+    }
+    return 'GGG';
+});

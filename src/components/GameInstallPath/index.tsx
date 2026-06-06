@@ -95,14 +95,18 @@ function GameInstallPath(
         }
     }, [version, platform]);
 
-    // 路径确定后自动检测游戏版本
+    // 路径确定后自动检测游戏版本和平台
     useEffect(() => {
         if (path && path.trim()) {
             const lowerPath = path.toLowerCase().trim();
             if (lowerPath.endsWith('.bin') || lowerPath.endsWith('.ggpk')) {
-                window.ipcRenderer.invoke('detect-game-version', { path }).then((detectedVersion: number) => {
+                Promise.all([
+                    window.ipcRenderer.invoke('detect-game-version', { path }) as Promise<number>,
+                    window.ipcRenderer.invoke('detect-game-platform', { path }) as Promise<string>,
+                ]).then(([detectedVersion, detectedPlatform]) => {
                     setVersion(detectedVersion);
-                    onChangeRef.current(path, platform, detectedVersion);
+                    setPlatform(detectedPlatform);
+                    onChangeRef.current(path, detectedPlatform, detectedVersion);
                 });
             }
         }
