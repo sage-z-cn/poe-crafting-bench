@@ -46,6 +46,14 @@ function SelectFont(
     return false;
   }, [patch])
 
+  // 检测到繁转简补丁时，清除已选字体
+  useEffect(() => {
+    if (f2sPatch && font) {
+      setFont('');
+      onChange({ font: '', fontSizeDelta });
+    }
+  }, [f2sPatch])
+
   const getInstalledFonts = useCallback(() => {
     window.ipcRenderer.invoke('get-installed-fonts').then((res: string[]) => {
       if (!isEmpty(res)) {

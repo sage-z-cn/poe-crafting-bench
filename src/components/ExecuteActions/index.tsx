@@ -53,7 +53,13 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
 
     useImperativeHandle<ExecuteActionsHandler, ExecuteActionsHandler>(ref, (): ExecuteActionsHandler => ({
         execute: (execParam: ExecParam) => {
-            const { patch, font, fontSizeDelta, minimapVisibility, cameraZoom, removeFog, lightUp } = execParam;
+            // 繁转简补丁与字体修改冲突，执行前清除字体
+            const hasF2sPatch = execParam.patch?.some(p => p.includes('繁转简'));
+            const effectiveExecParam: ExecParam = hasF2sPatch
+                ? { ...execParam, font: undefined, fontSizeDelta: undefined }
+                : execParam;
+
+            const { patch, font, fontSizeDelta, minimapVisibility, cameraZoom, removeFog, lightUp } = effectiveExecParam;
             if (isEmpty(patch) && isEmpty(font) && !fontSizeDelta && minimapVisibility === undefined && cameraZoom === undefined
                 && removeFog === undefined && lightUp === undefined) {
                 message.error('当前没有配置任何可以执行的内容').then();
@@ -76,12 +82,15 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
                     // 构建执行计划日志
                     const planLines: string[] = [];
                     planLines.push('═══ 执行计划 ═══');
-                    planLines.push(`目标文件: ${execParam.path}`);
-                    if (execParam.platform) {
-                        planLines.push(`平台: ${execParam.platform === 'GGG' ? '国际服' : '腾讯'}`);
+                    planLines.push(`目标文件: ${effectiveExecParam.path}`);
+                    if (effectiveExecParam.platform) {
+                        planLines.push(`平台: ${effectiveExecParam.platform === 'GGG' ? '国际服' : '腾讯'}`);
                     }
                     if (patch && patch.length > 0) {
                         planLines.push(`补丁 (${patch.length}): ${patch.map(p => p.split(/[\\/]/).pop()).join(', ')}`);
+                        if (hasF2sPatch) {
+                            planLines.push('⚠ 检测到繁转简补丁，已跳过字体修改');
+                        }
                     }
                     if (font) {
                         planLines.push(`字体: ${font}`);
@@ -102,8 +111,8 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
                     planLines.push('══════════════');
                     setExecuteLog(planLines.join('\n') + '\n');
 
-                    window.ipcRenderer.invoke('patch', execParam).then(code => {
-                        setLastExecParam(execParam);
+                    window.ipcRenderer.invoke('patch', effectiveExecParam).then(code => {
+                        setLastExecParam(effectiveExecParam);
                         if (code === 0) {
                             message.success('执行成功').then();
                             onExecuted?.(true);
