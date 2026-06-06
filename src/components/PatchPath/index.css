@@ -58,24 +58,28 @@
 
         .patch-list-item {
             font-size: 14px;
-            padding-left: 16px;
+            padding: 4px 0 4px 16px;
             width: calc(100% - 16px);
-            height: 32px;
-            line-height: 32px;
+            min-height: 32px;
+            line-height: 24px;
 
             display: flex;
             gap: 8px;
+            align-items: flex-start;
 
             .anticon-holder {
                 cursor: grab;
+                margin-top: 4px;
             }
 
             &-title {
                 flex: 1;
                 min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                word-break: break-all;
+            }
+
+            &-action {
+                flex-shrink: 0;
             }
 
             &.dragging {

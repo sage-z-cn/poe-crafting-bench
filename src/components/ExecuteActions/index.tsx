@@ -118,6 +118,7 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
                                     </div>
                                 ),
                                 okText: '复制日志并打开反馈页',
+                                cancelText: '取消',
                                 onOk: () => {
                                     navigator.clipboard.writeText(executeLog).then(() => {
                                         message.success('日志已复制到剪贴板').then();

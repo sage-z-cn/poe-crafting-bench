@@ -46,7 +46,7 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 async function createWindow() {
     win = new BrowserWindow({
-        title: 'Main window',
+        title: `流放工艺台 v${app.getVersion()}`,
         icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
         width: 800,
         height: 500,
@@ -95,8 +95,9 @@ async function createWindow() {
         win.loadFile(indexHtml)
     }
 
-    // Test actively push message to the Electron-Renderer
+    // 页面加载完成后设置标题（覆盖 HTML <title>）
     win.webContents.on('did-finish-load', () => {
+        win?.setTitle(`流放工艺台 v${app.getVersion()}`);
         win?.webContents.send('main-process-message', new Date().toLocaleString())
     })
 
