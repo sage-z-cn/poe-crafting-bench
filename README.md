@@ -6,7 +6,7 @@
 
 ### 基础功能
 
-- **补丁安装** — 支持 `.zip` 格式补丁，兼容 `Content.ggpk`（POE1 独立端）和 `Bundles2/_.index.bin`（POE2 / Steam / Epic）两种格式
+- **补丁安装** — 支持 `.zip` 格式补丁，兼容 `Content.ggpk` 和 `Bundles2/_.index.bin` 两种格式
 - **字体替换** — 一键修改游戏 UI 字体，支持系统已安装的任意字体
 - **字体缩放** — 调整字体大小，适配不同分辨率
 
