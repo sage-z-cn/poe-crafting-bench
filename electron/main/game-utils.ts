@@ -47,7 +47,7 @@ export async function getInstalledFonts(): Promise<string[]> {
  * 通过注册表查询游戏安装路径。
  * @param version - 游戏版本: 1 = POE1, 2 = POE2
  * @param platform - 平台: TENCENT | GGG
- * @returns 游戏 Bundles2/_.index.bin 的完整路径，找不到返回 null
+ * @returns 游戏文件的完整路径（优先 _.index.bin，其次 Content.ggpk），找不到返回 null
  */
 export async function getGameInstallPath(version: number, platform: string): Promise<string | null> {
   let regPath: string;
@@ -85,7 +85,26 @@ export async function getGameInstallPath(version: number, platform: string): Pro
     // 确保路径以分隔符结尾
     const normalized = installPath.endsWith(path.sep) ? installPath : installPath + path.sep;
 
-    // 查找 Bundles2/_.index.bin
+    // POE2 优先查找 Bundles2/_.index.bin
+    if (version >= 2) {
+      const indexBin = normalized + 'Bundles2\\_.index.bin';
+      if (fs.existsSync(indexBin)) {
+        return indexBin;
+      }
+      // POE2 也可以有 Content.ggpk
+      const ggpk = normalized + 'Content.ggpk';
+      if (fs.existsSync(ggpk)) {
+        return ggpk;
+      }
+    }
+
+    // POE1 优先查找 Content.ggpk
+    const ggpk = normalized + 'Content.ggpk';
+    if (fs.existsSync(ggpk)) {
+      return ggpk;
+    }
+
+    // 回退到 _.index.bin
     const indexBin = normalized + 'Bundles2\\_.index.bin';
     if (fs.existsSync(indexBin)) {
       return indexBin;

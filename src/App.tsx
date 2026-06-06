@@ -103,6 +103,9 @@ function App() {
         }
     }, [showHiddenFeatures, secretClickTimes]);
 
+    const [gamePlatform, setGamePlatform] = useState<string>();
+    const [executedSuccess, setExecutedSuccess] = useState(false);
+
     const setExecParamField = useCallback((key: string, value: any) => {
         setExecParam(prev => ({
             ...prev,
@@ -116,6 +119,30 @@ function App() {
             ...params
         }));
     }, []);
+
+    const launchGame = useCallback(() => {
+        window.ipcRenderer.invoke('launch-game', { path: execParam.path }).then(() => {
+            message.success('游戏已启动').then();
+        }).catch((e: any) => {
+            message.error('启动游戏失败: ' + e.message).then();
+        });
+    }, [execParam.path]);
+
+    const onExecuted = useCallback((success: boolean) => {
+        if (!success) return;
+        // 腾讯平台不显示启动按钮
+        if (gamePlatform === 'TENCENT') return;
+        if (gamePlatform === 'GGG') {
+            setExecutedSuccess(true);
+            return;
+        }
+        // 未选择平台时，通过 TCLS 文件夹检测腾讯平台
+        window.ipcRenderer.invoke('check-tencent-platform', { path: execParam.path }).then((isTecent: boolean) => {
+            if (!isTecent) {
+                setExecutedSuccess(true);
+            }
+        });
+    }, [gamePlatform, execParam.path]);
 
     const getMainBtnText = () => {
         if (currentStepKey === 'execute') {
@@ -136,7 +163,10 @@ function App() {
             <div className="header">
                 <Steps
                     current={currentStep}
-                    onChange={setCurrentStep}
+                    onChange={(current) => {
+                        setCurrentStep(current);
+                        setExecutedSuccess(false);
+                    }}
                     items={steps}
                     responsive={false}
                 />
@@ -144,7 +174,13 @@ function App() {
             <div className="body">
                 <GameInstallPath
                     visible={currentStepKey === 'path'}
-                    onChange={path => setExecParamField('path', path)}
+                    onChange={(path, platform) => {
+                        setExecParamField('path', path);
+                        if (platform) {
+                            setExecParamField('platform', platform);
+                            setGamePlatform(platform);
+                        }
+                    }}
                 />
                 <PatchPath
                     visible={currentStepKey === 'patch'}
@@ -159,26 +195,33 @@ function App() {
                     visible={currentStepKey === 'hiddenFeatures'}
                     onChange={params => addExecParam(params)}
                 />
-                <ExecuteActions ref={executeRef} visible={currentStepKey === "execute"} onExecutingChange={setExecuting}/>
+                <ExecuteActions ref={executeRef} visible={currentStepKey === "execute"} onExecutingChange={setExecuting} onExecuted={onExecuted} />
             </div>
             <div className="footer">
                 <Button
-                    // type={currentStep === 0 ? 'primary' : undefined}
                     disabled={executing || currentStep === 0}
-                    onClick={() => setCurrentStep(prev => prev - 1)}
+                    onClick={() => {
+                        setCurrentStep(prev => prev - 1);
+                        setExecutedSuccess(false);
+                    }}
                 >
                     上一步
-                    {/*{ currentStep === 0 ? '修补' : '上一步' }*/}
                 </Button>
-                <div className="secret" onClick={onSecretClick}>你的血管里奔流着力量之河。</div>
-                <Button
-                    type="primary"
-                    onClick={onNext}
-                    disabled={currentStepKey === 'path' && isEmpty(execParam.path)}
-                    loading={executing}
-                >
-                    {getMainBtnText()}
-                </Button>
+                {executedSuccess && gamePlatform !== 'TENCENT' ? (
+                    <Button type="primary" onClick={launchGame}>启动游戏</Button>
+                ) : (
+                    <div className="secret" onClick={onSecretClick}>你的血管里奔流着力量之河。</div>
+                )}
+                <div style={{ display: 'flex', gap: 12 }}>
+                    <Button
+                        type="primary"
+                        onClick={onNext}
+                        disabled={currentStepKey === 'path' && isEmpty(execParam.path)}
+                        loading={executing}
+                    >
+                        {getMainBtnText()}
+                    </Button>
+                </div>
             </div>
         </div>
     )

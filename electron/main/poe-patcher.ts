@@ -1,4 +1,4 @@
-import { Index, FileRecord } from 'poe-bundle-lib';
+import { Index, FileRecord, BundledGGPK, GGPK, TreeNode } from 'poe-bundle-lib';
 import AdmZip from 'adm-zip';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -31,7 +31,7 @@ const RESTORE_FOG_REGEX = /"#+(fog|area|water|post_transform)#+"/gi;
 // ─── 类型 ──────────────────────────────────────────────────────
 
 export interface PatchOptions {
-  path: string;                        // _.index.bin 文件路径
+  path: string;                        // 游戏文件路径 (Content.ggpk 或 _.index.bin)
   patch?: string[];                    // ZIP 补丁文件路径列表
   font?: string;                       // 字体名称
   fontSizeDelta?: number;              // 字体大小增量
@@ -41,44 +41,155 @@ export interface PatchOptions {
   lightUp?: number;                    // 点亮环境
 }
 
+/**
+ * GGPK 的 FileRecord 最小接口 — 避免跨模块导入问题。
+ */
+interface GGPKFileRecord {
+  read(): Buffer;
+  write(newContent: Buffer, hash?: Buffer): void;
+  name: string;
+}
+interface FileAccess {
+  Read(): Buffer;
+  Write(newContent: Buffer): void;
+  Path: string | null;
+}
+
+// ─── 格式类型 ─────────────────────────────────────────────────
+
+type GameFormat = 'index' | 'bundled-ggpk' | 'plain-ggpk';
+
+/**
+ * 根据文件路径检测格式类型。
+ */
+function detectFormat(filePath: string): 'ggpk' | 'index' {
+  return filePath.toLowerCase().endsWith('.ggpk') ? 'ggpk' : 'index';
+}
+
+/**
+ * 将 GGPK 的 FileRecord 包装为统一的 FileAccess 接口。
+ */
+function wrapGGPKFile(fr: GGPKFileRecord, filePath: string): FileAccess {
+  return {
+    Read: () => fr.read(),
+    Write: (data: Buffer) => fr.write(data),
+    Path: filePath,
+  };
+}
+
 // ─── 主入口 ───────────────────────────────────────────────────
 
 export async function patchGame(opts: PatchOptions, onLog: (msg: string) => void): Promise<number> {
-  const indexPath = opts.path;
+  const gamePath = opts.path;
+  const rawFormat = detectFormat(gamePath);
+  let format: GameFormat = rawFormat === 'index' ? 'index' : 'bundled-ggpk'; // 初始假设
   let index: Index | null = null;
+  let ggpk: BundledGGPK | null = null;
+  let plainGGPK: GGPK | null = null;
   let disposed = false;
 
   try {
-    onLog(`正在读取 ${indexPath}`);
-    index = new Index(indexPath, { parsePaths: false });
+    onLog(`正在读取 ${gamePath} (格式: ${rawFormat === 'ggpk' ? 'Content.ggpk' : '_.index.bin'})`);
+
+    if (rawFormat === 'ggpk') {
+      try {
+        // 首先尝试 BundledGGPK（Content.ggpk 内含有 Bundles2/_.index.bin）
+        ggpk = new BundledGGPK(gamePath, false);
+        index = ggpk.Index;
+        format = 'bundled-ggpk';
+        onLog('检测到 Bundled GGPK 格式 (内含 Bundles2/_.index.bin)');
+      } catch (e: any) {
+        if (e.message?.includes('Bundles2')) {
+          // 不包含 Bundles2 → 回退到纯 GGPK 模式
+          onLog('未检测到 Bundles2 目录，使用纯 GGPK 模式');
+          plainGGPK = new GGPK(gamePath);
+          format = 'plain-ggpk';
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      index = new Index(gamePath, { parsePaths: false });
+      format = 'index';
+    }
 
     // ── 应用补丁 ──
     if (opts.patch && opts.patch.length > 0) {
-      const gameRoot = path.dirname(path.dirname(indexPath)); // Bundles2/ 的父目录 = 游戏根目录
-
-      for (const patchPath of opts.patch) {
-        if (!fs.existsSync(patchPath)) {
-          onLog(`补丁 ${patchPath} 不存在，已跳过`);
-          continue;
+      if (format === 'bundled-ggpk') {
+        // Bundled GGPK 格式：补丁写入 GGPK 内部
+        for (const patchPath of opts.patch) {
+          if (!fs.existsSync(patchPath)) {
+            onLog(`补丁 ${patchPath} 不存在，已跳过`);
+            continue;
+          }
+          const patchName = path.basename(patchPath);
+          onLog(`正在安装补丁 ${patchName} 到 GGPK ...`);
+          try {
+            const zip = new AdmZip(patchPath);
+            const entries = zip.getEntries().map(e => ({
+              fullName: e.entryName,
+              getData: () => e.getData(),
+            }));
+            const count = Index.ReplaceFromEntries(index!, entries, (fr, name) => {
+              onLog(`  ${name}`);
+              return false;
+            });  // saveIndex 默认 true，自动调用 index.Save()
+            onLog(`补丁 ${patchName} 应用成功 (${count} 个文件)`);
+          } catch (e: any) {
+            onLog(`补丁 ${patchName} 应用失败: ${e.message}`);
+            throw e;
+          }
         }
-
-        const patchName = path.basename(patchPath);
-        onLog(`正在安装补丁 ${patchName}`);
-
-        try {
-          const zip = new AdmZip(patchPath);
-          // Bundles2 补丁：直接解压到游戏根目录覆盖 bundle 文件
-          zip.extractAllTo(gameRoot, true);
-          onLog(`补丁 ${patchName} 应用成功`);
-        } catch (e: any) {
-          onLog(`补丁 ${patchName} 应用失败: ${e.message}`);
-          throw e; // 重新抛出以让外层 catch 处理资源清理
+        ggpk?.Dispose();
+        disposed = true;
+      } else if (format === 'plain-ggpk') {
+        // 纯 GGPK 格式：使用 GGPK.replaceFromZipEntries 写入
+        for (const patchPath of opts.patch) {
+          if (!fs.existsSync(patchPath)) {
+            onLog(`补丁 ${patchPath} 不存在，已跳过`);
+            continue;
+          }
+          const patchName = path.basename(patchPath);
+          onLog(`正在安装补丁 ${patchName} 到 GGPK ...`);
+          try {
+            const zip = new AdmZip(patchPath);
+            const entries = zip.getEntries().map(e => ({
+              fullName: e.entryName,
+              getData: () => e.getData(),
+            }));
+            const count = GGPK.replaceFromZipEntries(plainGGPK!.root, entries, (fr, name, added) => {
+              onLog(`  ${added ? '添加' : '替换'}: ${name}`);
+              return false;
+            }, true);
+            onLog(`补丁 ${patchName} 应用成功 (${count} 个文件)`);
+          } catch (e: any) {
+            onLog(`补丁 ${patchName} 应用失败: ${e.message}`);
+            throw e;
+          }
         }
+        // 纯 GGPK 不需要重新打开，写入是即时生效的
+      } else {
+        // _.index.bin 格式：直接解压补丁到游戏根目录
+        const gameRoot = path.dirname(path.dirname(gamePath));
+        for (const patchPath of opts.patch) {
+          if (!fs.existsSync(patchPath)) {
+            onLog(`补丁 ${patchPath} 不存在，已跳过`);
+            continue;
+          }
+          const patchName = path.basename(patchPath);
+          onLog(`正在安装补丁 ${patchName}`);
+          try {
+            const zip = new AdmZip(patchPath);
+            zip.extractAllTo(gameRoot, true);
+            onLog(`补丁 ${patchName} 应用成功`);
+          } catch (e: any) {
+            onLog(`补丁 ${patchName} 应用失败: ${e.message}`);
+            throw e;
+          }
+        }
+        index?.Dispose();
+        disposed = true;
       }
-
-      // 补丁覆盖了 bundle 文件，需要重新加载 index
-      index.Dispose();
-      disposed = true;
     }
 
     // ── 检查是否需要做 UI 修改 ──
@@ -92,50 +203,120 @@ export async function patchGame(opts: PatchOptions, onLog: (msg: string) => void
         opts.removeFog != null ||
         opts.lightUp != null) {
 
-      // 如果尚未 dispose，则 dispose 后重新打开（确保数据一致）
+      // 如果 dispose 了需要重新打开
       if (disposed) {
-        index = new Index(indexPath, { parsePaths: false });
+        if (format === 'bundled-ggpk') {
+          ggpk = new BundledGGPK(gamePath, false);
+          index = ggpk.Index;
+        } else if (format === 'plain-ggpk') {
+          plainGGPK = new GGPK(gamePath);
+        } else {
+          index = new Index(gamePath, { parsePaths: false });
+        }
         disposed = false;
       }
 
-      // 解析文件路径（将 hash 转为实际路径字符串）
-      const failedCount = index.ParsePaths();
-      if (failedCount > 0) {
-        onLog(`警告: ${failedCount} 个文件路径解析失败`);
+      if (format === 'plain-ggpk') {
+        // ── 纯 GGPK 模式：遍历 GGPK 文件树 ──
+        // 注意：GGPK 中路径保留原始大小写，需做大小写不敏感匹配
+        const uiSettingMatches = UI_SETTING_PATHS.map(p => p.toLowerCase());
+        const minimapMatch = MINIMAP_VISIBILITY_PIXEL_PATH.toLowerCase();
+        const cameraMatch = CAMERA_ZOOM_NODE_PATH.toLowerCase();
+
+        let fileCount = 0;
+        let matchedCount = 0;
+        const samplePaths: string[] = [];
+
+        for (const [fr, relPath] of TreeNode.recurseFiles(plainGGPK!.root)) {
+          fileCount++;
+          // 收集前 20 条路径样本用于诊断
+          if (samplePaths.length < 20) {
+            samplePaths.push(relPath);
+          }
+          const lowerPath = relPath.replace(/^\/+/, '').toLowerCase();
+          const f = wrapGGPKFile(fr, relPath);
+
+          let fileMatched = false;
+          if (whetherModifyUiSetting && uiSettingMatches.includes(lowerPath)) {
+            onLog(`正在应用字体到 ${relPath} ...`);
+            processUiSettings(f, opts.font || '', opts.fontSizeDelta, onLog);
+            fileMatched = true;
+          }
+          if (opts.minimapVisibility != null && minimapMatch === lowerPath) {
+            processMinimapVisibility(f, opts.minimapVisibility, onLog);
+            fileMatched = true;
+          }
+          if ((opts.removeFog != null || opts.lightUp != null) && ENVIRONMENT_SETTINGS_REGEX.test(lowerPath)) {
+            processEnvironmentSettings(f, opts.removeFog, opts.lightUp, relPath, onLog);
+            fileMatched = true;
+          }
+          if (opts.cameraZoom != null && cameraMatch === lowerPath) {
+            processCameraZoom(f, opts.cameraZoom, onLog);
+            fileMatched = true;
+          }
+          if (fileMatched) matchedCount++;
+        }
+
+        onLog(`遍历完成: 共 ${fileCount} 个文件，命中 ${matchedCount} 个`);
+        if (samplePaths.length > 0) {
+          onLog(`路径样本: ${samplePaths.join(', ')}`);
+        }
+
+        // 诊断：检查是否包含 metadata 目录
+        const hasMetadataDir = samplePaths.some(p => p.toLowerCase().includes('metadata'));
+        if (fileCount > 0 && matchedCount === 0) {
+          onLog('警告: 未找到任何需要修改的文件');
+          if (!hasMetadataDir) {
+            onLog('  此 GGPK 中未找到 metadata 目录，UI 配置文件可能在 Bundles2/_.index.bin 中');
+            onLog('  建议: 选择游戏目录下的 Bundles2\\_.index.bin 文件代替 Content.ggpk');
+          } else {
+            onLog(`  期望的 UI 文件: ${UI_SETTING_PATHS.join(', ')}`);
+          }
+        }
+        onLog('正在保存修改...');
+        // 纯 GGPK 写入是即时生效的，dispose() 会调用 renewHashes() 保留根哈希以阻止游戏回滚
+      } else {
+        // ── Index 模式（bundled-ggpk 或 index）：遍历 Index.Files ──
+        const failedCount = index!.ParsePaths();
+        if (failedCount > 0) {
+          onLog(`警告: ${failedCount} 个文件路径解析失败`);
+        }
+
+        const files = index!.Files;
+
+        for (const [, fileRecord] of files) {
+          const filePath = fileRecord.Path;
+          if (!filePath) continue;
+
+          if (whetherModifyUiSetting && UI_SETTING_PATHS.includes(filePath)) {
+            onLog(`正在应用字体到 ${filePath} ...`);
+            processUiSettings(fileRecord, opts.font || '', opts.fontSizeDelta, onLog);
+          }
+          if (opts.minimapVisibility != null && MINIMAP_VISIBILITY_PIXEL_PATH === filePath) {
+            processMinimapVisibility(fileRecord, opts.minimapVisibility, onLog);
+          }
+          if ((opts.removeFog != null || opts.lightUp != null) && ENVIRONMENT_SETTINGS_REGEX.test(filePath)) {
+            processEnvironmentSettings(fileRecord, opts.removeFog, opts.lightUp, filePath, onLog);
+          }
+          if (opts.cameraZoom != null && CAMERA_ZOOM_NODE_PATH === filePath) {
+            processCameraZoom(fileRecord, opts.cameraZoom, onLog);
+          }
+        }
+        onLog('正在保存修改 (Index.Save)...');
+        try {
+          index!.Save();
+          onLog('Index.Save 完成');
+          if (ggpk) {
+            onLog('正在写回 _.index.bin 到 GGPK...');
+            ggpk.saveIndex();
+            onLog('写回 _.index.bin 完成');
+          }
+        } catch (e: any) {
+          onLog(`保存失败: ${e.message}`);
+          onLog(`堆栈: ${e.stack}`);
+          throw e;
+        }
       }
-
-      const files = index.Files;
-
-      // ── 遍历所有文件，应用修改 ──
-      for (const [, fileRecord] of files) {
-        const filePath = fileRecord.Path;
-        if (!filePath) continue;
-
-        // ── 字体 & 字体大小修改 ──
-        if (whetherModifyUiSetting && UI_SETTING_PATHS.includes(filePath)) {
-          onLog(`正在应用字体到 ${filePath} ...`);
-          processUiSettings(fileRecord, opts.font || '', opts.fontSizeDelta, onLog);
-        }
-
-        // ── 小地图全开 ──
-        if (opts.minimapVisibility != null && MINIMAP_VISIBILITY_PIXEL_PATH === filePath) {
-          processMinimapVisibility(fileRecord, opts.minimapVisibility, onLog);
-        }
-
-        // ── 去雾 & 点亮环境 ──
-        if ((opts.removeFog != null || opts.lightUp != null) && ENVIRONMENT_SETTINGS_REGEX.test(filePath)) {
-          processEnvironmentSettings(fileRecord, opts.removeFog, opts.lightUp, filePath, onLog);
-        }
-
-        // ── 视距倍数 ──
-        if (opts.cameraZoom != null && CAMERA_ZOOM_NODE_PATH === filePath) {
-          processCameraZoom(fileRecord, opts.cameraZoom, onLog);
-        }
-      }
-
-      // 保存修改
-      onLog('正在保存修改...');
-      index.Save();
     }
 
     onLog('执行结束');
@@ -147,15 +328,17 @@ export async function patchGame(opts: PatchOptions, onLog: (msg: string) => void
     return 1;
   } finally {
     if (!disposed) {
+      ggpk?.Dispose();
       index?.Dispose();
+      plainGGPK?.dispose();
     }
   }
 }
 
 // ─── 字体修改 ─────────────────────────────────────────────────
 
-function processUiSettings(fileRecord: FileRecord, font: string, fontSizeDelta: number | undefined, onLog: (msg: string) => void): void {
-  const bytes = fileRecord.Read();
+function processUiSettings(f: FileAccess, font: string, fontSizeDelta: number | undefined, onLog: (msg: string) => void): void {
+  const bytes = f.Read();
   const encoding: BufferEncoding = 'utf16le';
   const fileContent = bytes.toString(encoding);
 
@@ -166,7 +349,6 @@ function processUiSettings(fileRecord: FileRecord, font: string, fontSizeDelta: 
     let line = lines[i];
 
     if (line.trim().startsWith('<Font') && line.includes('typeface')) {
-      // 替换 typeface
       if (font) {
         const newLine = line.replace(TYPEFACE_REGEX, `typeface="${font}"`);
         if (newLine !== line) {
@@ -174,8 +356,6 @@ function processUiSettings(fileRecord: FileRecord, font: string, fontSizeDelta: 
           modified = true;
         }
       }
-
-      // 调整字体大小
       if (fontSizeDelta != null && fontSizeDelta !== 0) {
         const match = line.match(FONT_SIZE_REGEX);
         if (match) {
@@ -214,14 +394,14 @@ function processUiSettings(fileRecord: FileRecord, font: string, fontSizeDelta: 
   if (modified) {
     const newContent = lines.join('\r\n');
     const outBytes = Buffer.from(newContent, encoding);
-    fileRecord.Write(outBytes);
+    f.Write(outBytes);
   }
 }
 
 // ─── 小地图全开 ──────────────────────────────────────────────
 
-function processMinimapVisibility(fileRecord: FileRecord, enabled: boolean, onLog: (msg: string) => void): void {
-  const bytes = fileRecord.Read();
+function processMinimapVisibility(f: FileAccess, enabled: boolean, onLog: (msg: string) => void): void {
+  const bytes = f.Read();
   const encoding: BufferEncoding = 'utf8';
   let fileContent = bytes.toString(encoding);
   let modified = false;
@@ -243,25 +423,24 @@ function processMinimapVisibility(fileRecord: FileRecord, enabled: boolean, onLo
 
   if (modified) {
     const outBytes = Buffer.from(fileContent, encoding);
-    fileRecord.Write(outBytes);
+    f.Write(outBytes);
   }
 }
 
 // ─── 去雾 & 点亮环境 ─────────────────────────────────────────
 
 function processEnvironmentSettings(
-  fileRecord: FileRecord,
+  f: FileAccess,
   removeFog: boolean | undefined,
   lightUp: number | undefined,
   filePath: string,
   onLog: (msg: string) => void
 ): void {
-  let bytes = fileRecord.Read();
+  let bytes = f.Read();
   const encoding: BufferEncoding = 'utf16le';
   let fileContent = bytes.toString(encoding);
   let modified = false;
 
-  // ── 去雾 ──
   if (removeFog != null) {
     if (removeFog) {
       onLog('正在驱散迷雾... ' + filePath);
@@ -276,12 +455,10 @@ function processEnvironmentSettings(
     }
   }
 
-  // ── 点亮环境 ──
   if (lightUp != null) {
     let clampedLightUp = Math.max(0, Math.min(lightUp, 3));
 
     try {
-      // 处理 BOM
       let bom = '';
       if (fileContent.length > 0 && fileContent.charCodeAt(0) === 0xFEFF) {
         bom = '\uFEFF';
@@ -293,7 +470,6 @@ function processEnvironmentSettings(
       if (jsonObj.directional_light && typeof jsonObj.directional_light.multiplier === 'number') {
         const dirLight = jsonObj.directional_light;
 
-        // 备份原始乘数
         if (dirLight.original_multiplier === undefined) {
           dirLight.original_multiplier = dirLight.multiplier;
         }
@@ -325,19 +501,18 @@ function processEnvironmentSettings(
 
   if (modified) {
     const outBytes = Buffer.from(fileContent, encoding);
-    fileRecord.Write(outBytes);
+    f.Write(outBytes);
   }
 }
 
 // ─── 视距倍数 ─────────────────────────────────────────────────
 
-function processCameraZoom(fileRecord: FileRecord, cameraZoom: number, onLog: (msg: string) => void): void {
-  const bytes = fileRecord.Read();
+function processCameraZoom(f: FileAccess, cameraZoom: number, onLog: (msg: string) => void): void {
+  const bytes = f.Read();
   const encoding: BufferEncoding = 'utf16le';
   const fileContent = bytes.toString(encoding);
   const lines = fileContent.split('\r\n');
 
-  // 限制范围
   let zoom = Math.max(1, Math.min(3, cameraZoom));
 
   const teamIndex = lines.findIndex(line => line.includes('team = 1'));
@@ -356,5 +531,5 @@ function processCameraZoom(fileRecord: FileRecord, cameraZoom: number, onLog: (m
 
   const newContent = lines.join('\r\n');
   const outBytes = Buffer.from(newContent, encoding);
-  fileRecord.Write(outBytes);
+  f.Write(outBytes);
 }

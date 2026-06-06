@@ -34,6 +34,9 @@
 
         .execute-result-title {
             margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .execute-log {

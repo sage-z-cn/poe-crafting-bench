@@ -1,5 +1,6 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Button, message, Modal } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
 import classNames from "classnames";
 import { isEmpty } from "lodash";
 import './index.css';
@@ -8,6 +9,7 @@ import useLastExecParam from "@/hooks/useLastExecParam";
 interface ExecuteActionsProps {
     visible: boolean
     onExecutingChange: (executing: boolean) => void
+    onExecuted?: (success: boolean) => void
 }
 
 export interface ExecuteActionsHandler {
@@ -18,6 +20,7 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
     {
         visible,
         onExecutingChange,
+        onExecuted,
     },
     ref
 ) => {
@@ -40,10 +43,19 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
         }
     }, [])
 
+    const copyLog = useCallback(() => {
+        navigator.clipboard.writeText(executeLog).then(() => {
+            message.success('日志已复制到剪贴板').then();
+        }).catch(() => {
+            message.error('复制失败').then();
+        });
+    }, [executeLog]);
+
     useImperativeHandle<ExecuteActionsHandler, ExecuteActionsHandler>(ref, (): ExecuteActionsHandler => ({
         execute: (execParam: ExecParam) => {
-            const { patch, font, fontSizeDelta, minimapVisibility, cameraZoom } = execParam;
-            if (isEmpty(patch) && isEmpty(font) && !fontSizeDelta && minimapVisibility === undefined && cameraZoom === undefined) {
+            const { patch, font, fontSizeDelta, minimapVisibility, cameraZoom, removeFog, lightUp } = execParam;
+            if (isEmpty(patch) && isEmpty(font) && !fontSizeDelta && minimapVisibility === undefined && cameraZoom === undefined
+                && removeFog === undefined && lightUp === undefined) {
                 message.error('当前没有配置任何可以执行的内容').then();
                 return;
             }
@@ -60,19 +72,51 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
                 onOk: () => {
                     onExecutingChange(true);
                     setExecuteLog('');
+
+                    // 构建执行计划日志
+                    const planLines: string[] = [];
+                    planLines.push('═══ 执行计划 ═══');
+                    planLines.push(`目标文件: ${execParam.path}`);
+                    if (execParam.platform) {
+                        planLines.push(`平台: ${execParam.platform === 'GGG' ? '国际服' : '腾讯'}`);
+                    }
+                    if (patch && patch.length > 0) {
+                        planLines.push(`补丁 (${patch.length}): ${patch.map(p => p.split(/[\\/]/).pop()).join(', ')}`);
+                    }
+                    if (font) {
+                        planLines.push(`字体: ${font}`);
+                        if (fontSizeDelta) planLines.push(`字体大小调整: ${fontSizeDelta > 0 ? '+' : ''}${fontSizeDelta}`);
+                    }
+                    if (minimapVisibility !== undefined) {
+                        planLines.push(`小地图全开: ${minimapVisibility ? '开启' : '关闭'}`);
+                    }
+                    if (cameraZoom !== undefined) {
+                        planLines.push(`视距倍数: ${cameraZoom}`);
+                    }
+                    if (removeFog !== undefined) {
+                        planLines.push(`去雾: ${removeFog ? '开启' : '关闭'}`);
+                    }
+                    if (lightUp !== undefined) {
+                        planLines.push(`点亮环境: ${lightUp}`);
+                    }
+                    planLines.push('══════════════');
+                    setExecuteLog(planLines.join('\n') + '\n');
+
                     window.ipcRenderer.invoke('patch', execParam).then(code => {
                         setLastExecParam(execParam);
                         if (code === 0) {
                             message.success('执行成功').then();
+                            onExecuted?.(true);
                         } else {
                             message.error('执行失败').then()
+                            onExecuted?.(false);
                         }
                         onExecutingChange(false);
                     });
                 }
             })
         }
-    }), [])
+    }), [onExecuted])
 
     const openUrl = useCallback((url: string) => {
         window.ipcRenderer.invoke('open-external', url);
@@ -97,6 +141,13 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
             <div className="execute-result">
                 <div className="execute-result-title">
                     <span>执行日志</span>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined />}
+                        onClick={copyLog}
+                        disabled={!executeLog}
+                    >复制</Button>
                 </div>
                 <div className="execute-log" ref={logRef}>{executeLog}</div>
             </div>

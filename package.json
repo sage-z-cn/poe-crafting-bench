@@ -28,7 +28,7 @@
     "caniuse-lite": "^1.0.30001793",
     "classnames": "^2.5.1",
     "lodash": "^4.17.21",
-    "poe-bundle-lib": "1.0.2",
+    "poe-bundle-lib": "1.2.0",
     "react-sortable-hoc": "^2.0.0"
   },
   "devDependencies": {

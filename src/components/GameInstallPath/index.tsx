@@ -14,7 +14,7 @@ import useLastExecParam from "@/hooks/useLastExecParam";
 
 interface GameInstallPathProps {
     visible: boolean
-    onChange: (path: string) => void
+    onChange: (path: string, platform?: string) => void
 }
 
 const gameVersions = [
@@ -99,8 +99,8 @@ function GameInstallPath(
     useEffect(() => {
         if (path && path.trim()) {
             const lowerPath = path.toLowerCase().trim();
-            if (lowerPath.endsWith('.bin')) {
-                onChangeRef.current(path);
+            if (lowerPath.endsWith('.bin') || lowerPath.endsWith('.ggpk')) {
+                onChangeRef.current(path, platform);
             }
         }
     }, [path])
@@ -112,7 +112,7 @@ function GameInstallPath(
                     <Input
                         value={path}
                         disabled
-                        placeholder="请选择游戏根目录的 Bundles2\_.index.bin"
+                        placeholder="请选择游戏目录的 Content.ggpk 或 Bundles2\_.index.bin"
                     />
                 </Flex>
                 <Button type="primary" onClick={onManualChoose}>手动选择</Button>

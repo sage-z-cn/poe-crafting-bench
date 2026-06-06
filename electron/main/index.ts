@@ -3,6 +3,8 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
+import fs from 'node:fs'
+import { exec } from 'node:child_process'
 import * as process from "node:process";
 import { patchGame } from './poe-patcher.js';
 import { getGameInstallPath, getInstalledFonts } from './game-utils.js';
@@ -134,11 +136,11 @@ app.on('activate', () => {
 ipcMain.handle('open-game-file-dialog', async (_, arg) => {
     if (win) {
         const result = await dialog.showOpenDialog(win, {
-            title: '选择 Bundles2/_.index.bin',
+            title: '选择游戏文件 (Content.ggpk 或 _.index.bin)',
             filters: [
                 {
-                    name: '_.index.bin',
-                    extensions: ['bin'],
+                    name: '游戏文件',
+                    extensions: ['ggpk', 'bin'],
                 }
             ]
         });
@@ -203,4 +205,42 @@ ipcMain.handle('patch', async (_, arg: ExecParam) => {
     }, sendLog);
 
     return code;
+});
+
+ipcMain.handle('launch-game', async (_, arg: { path: string }) => {
+    const gamePath = arg.path;
+    let gameDir: string;
+    const lowerPath = gamePath.toLowerCase();
+
+    if (lowerPath.endsWith('.ggpk')) {
+        // Content.ggpk 在游戏根目录
+        gameDir = path.dirname(gamePath);
+    } else {
+        // Bundles2/_.index.bin → 游戏根目录是上两级
+        gameDir = path.dirname(path.dirname(gamePath));
+    }
+
+    const gameExe = path.join(gameDir, 'PathOfExile_x64.exe');
+    if (!fs.existsSync(gameExe)) {
+        throw new Error(`找不到游戏可执行文件: ${gameExe}`);
+    }
+
+    // 使用 exec 启动游戏（不等待退出，避免阻塞）
+    exec(`"${gameExe}"`, { cwd: gameDir });
+    return true;
+});
+
+ipcMain.handle('check-tencent-platform', async (_, arg: { path: string }) => {
+    const gamePath = arg.path;
+    const lowerPath = gamePath.toLowerCase();
+    let gameDir: string;
+
+    if (lowerPath.endsWith('.ggpk')) {
+        gameDir = path.dirname(gamePath);
+    } else {
+        gameDir = path.dirname(path.dirname(gamePath));
+    }
+
+    // 腾讯平台在游戏目录下有 TCLS 文件夹
+    return fs.existsSync(path.join(gameDir, 'TCLS'));
 });
