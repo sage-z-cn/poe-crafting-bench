@@ -1,9 +1,9 @@
 {
-  "name": "electron-vite-react",
-  "version": "2.2.0",
+  "name": "poe-bench",
+  "version": "2.3.0",
   "main": "dist-electron/main/index.js",
   "description": "Electron Vite React boilerplate.",
-  "author": "草鞋没号 <308487730@qq.com>",
+  "author": "Sage <sagezheng@outlook.com>",
   "license": "MIT",
   "private": true,
   "debug": {
@@ -20,10 +20,21 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "@ant-design/icons": "5.x",
+    "adm-zip": "^0.5.17",
+    "ahooks": "^3.8.5",
+    "antd": "^5.26.0-alpha.0",
+    "array-move": "^4.0.0",
+    "caniuse-lite": "^1.0.30001793",
+    "classnames": "^2.5.1",
+    "lodash": "^4.17.21",
+    "poe-bundle-lib": "1.2.0",
+    "react-sortable-hoc": "^2.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
+    "@types/adm-zip": "^0.5.8",
+    "@types/lodash": "^4.17.17",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
