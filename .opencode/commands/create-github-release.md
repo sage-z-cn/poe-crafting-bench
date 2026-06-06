@@ -57,7 +57,8 @@ $notes += @"
 ---
 
 > **下载说明**  
-> `.exe` 为 NSIS 安装包（推荐），`.zip` 为免安装便携版。
+> `.exe` 为 NSIS 安装包（推荐），`.zip` 为免安装便携版。  
+> 请下载页面底部的附件，勿下载 Source code 源码压缩包。
 "@
 
 $tempFile = New-TemporaryFile
