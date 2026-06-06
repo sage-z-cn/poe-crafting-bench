@@ -5,6 +5,7 @@ import classNames from "classnames";
 import { isEmpty } from "lodash";
 import './index.css';
 import useLastExecParam from "@/hooks/useLastExecParam";
+import { version } from '../../../package.json';
 
 interface ExecuteActionsProps {
     visible: boolean
@@ -81,6 +82,7 @@ const ExecuteActions = forwardRef<ExecuteActionsHandler, ExecuteActionsProps>((
                     // 构建执行计划日志
                     const planLines: string[] = [];
                     planLines.push('═══ 执行计划 ═══');
+                    planLines.push(`版本: v${version}`);
                     planLines.push(`目标文件: ${effectiveExecParam.path}`);
                     if (effectiveExecParam.platform) {
                         planLines.push(`平台: ${effectiveExecParam.platform === 'GGG' ? '国际服' : '腾讯'}`);

@@ -193,6 +193,8 @@ ipcMain.handle('patch', async (_, arg: ExecParam) => {
         win?.webContents.send('execute-log', msg);
     };
 
+    sendLog(`POE Bench v${app.getVersion()}`);
+
     const code = await patchGame({
         path,
         patch,

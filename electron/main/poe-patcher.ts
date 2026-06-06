@@ -76,7 +76,7 @@ export async function patchGame(opts: PatchOptions, onLog: (msg: string) => void
   let disposed = false;
 
   try {
-    onLog(`正在读取 ${gamePath} (格式: ${rawFormat === 'ggpk' ? 'Content.ggpk' : '_.index.bin'})`);
+    onLog(`正在读取 ${gamePath}`);
 
     if (rawFormat === 'ggpk') {
       try {
@@ -113,15 +113,56 @@ export async function patchGame(opts: PatchOptions, onLog: (msg: string) => void
           onLog(`正在安装补丁 ${patchName} 到 GGPK ...`);
           try {
             const zip = new AdmZip(patchPath);
-            const entries = zip.getEntries().map(e => ({
+            const allEntries = zip.getEntries().map(e => ({
               fullName: e.entryName,
               getData: () => e.getData(),
             }));
-            const count = Index.ReplaceFromEntries(index!, entries, (fr, name) => {
-              onLog(`  ${name}`);
-              return false;
-            });  // saveIndex 默认 true，自动调用 index.Save()
-            onLog(`补丁 ${patchName} 应用成功 (${count} 个文件)`);
+
+            // 分离束文件条目（Bundles2/*.bundle.bin）与内容文件条目
+            const bundleEntries: typeof allEntries = [];
+            const contentEntries: typeof allEntries = [];
+            for (const entry of allEntries) {
+              if (entry.fullName.endsWith('/')) continue;
+              if (entry.fullName.startsWith('Bundles2/')) {
+                bundleEntries.push(entry);
+              } else {
+                contentEntries.push(entry);
+              }
+            }
+
+            let totalCount = 0;
+
+            // 处理内容文件：通过 Index 替换
+            if (contentEntries.length > 0) {
+              const count = Index.ReplaceFromEntries(index!, contentEntries, (fr, name) => {
+                onLog(`  ${name}`);
+                return false;
+              });  // saveIndex 默认 true，自动调用 index.Save()
+              totalCount += count;
+            }
+
+            // 处理束文件：直接写入 GGPK 的 Bundles2 目录
+            if (bundleEntries.length > 0) {
+              const bundles2 = ggpk!.root.findByName('Bundles2');
+              if (bundles2 && 'findOrAddFile' in bundles2) {
+                for (const entry of bundleEntries) {
+                  // 去掉 "Bundles2/" 前缀，因为 bundles2 节点已在该路径层级
+                  const relPath = entry.fullName.substring('Bundles2/'.length);
+                  const data = entry.getData();
+                  const { record: file, added } = (bundles2 as any).findOrAddFile(relPath, data.length);
+                  file.write(data);
+                  onLog(`  ${added ? '添加' : '替换'}: Bundles2/${relPath}`);
+                  totalCount++;
+                }
+              } else {
+                onLog(`  警告: 未找到 GGPK 内 Bundles2 目录，跳过 ${bundleEntries.length} 个束文件`);
+                for (const entry of bundleEntries) {
+                  onLog(`    跳过: ${entry.fullName}`);
+                }
+              }
+            }
+
+            onLog(`补丁 ${patchName} 应用成功 (${totalCount} 个文件)`);
           } catch (e: any) {
             onLog(`补丁 ${patchName} 应用失败: ${e.message}`);
             throw e;
